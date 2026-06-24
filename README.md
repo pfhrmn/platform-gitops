@@ -1,24 +1,104 @@
 # platform-gitops
 
-GitOps repository for our Kubernetes platform. ArgoCD reconciles this repository
-onto the GKE cluster.
+Dieses Repository enthält die GitOps-Konfiguration für die Kubernetes‑Plattform.  
+ArgoCD synchronisiert die Inhalte dieses Repositories kontinuierlich auf den GKE‑Cluster.
 
-## Documentation
+---
 
-- **[Crossplane Tenant SaaS Platform (Person 2 / Day 2)](docs/crossplane-tenant-platform.md)**
-  — how tenant instances of the 3-tier SaaS application are provisioned on-the-fly via
-  GitOps + Crossplane: the `XTenantApplication` XRD/Composition, per-tenant CloudNativePG
-  database, soft multi-tenancy, per-tenant HTTPS ingress, and the staging-first update model.
+## Übersicht
 
-## Related repositories
+Das Repository stellt alle zentralen Plattform‑Komponenten bereit, die für den Betrieb der Umgebung notwendig sind. Dazu gehören:
 
-| Repo | Purpose |
-|---|---|
-| [`infra-iac-gke`](https://github.com/pfhrmn/infra-iac-gke) | IaC: GKE cluster, network, IAM / Workload Identity, ArgoCD bootstrap |
-| `platform-gitops` (this repo) | GitOps: platform services + the Crossplane tenant layer |
+- ArgoCD App‑of‑Apps Struktur
+- Cert‑Manager (TLS-Zertifikate)
+- ExternalDNS (automatische DNS‑Einträge)
+- External Secrets Operator (Secrets aus Google Secret Manager)
+- Ingress-Konfiguration
+- Basis‑Namespaces und Plattform‑Services
 
-## Layout
+Die Struktur ist so aufgebaut, dass Erweiterungen und spätere Automatisierungen problemlos ergänzt werden können.
 
-- `base/` — platform services and the ArgoCD app-of-apps root
-- `base/platform/` — Crossplane control plane + tenant API (`applications/`, `crossplane-providers/`, `crossplane-config/`, `tenant-api/`)
-- `tenants/` — tenant instances + image-release config (staging-first rollout)
+---
+
+## Repository‑Struktur
+
+### `base/`
+Enthält alle globalen Plattform‑Services.
+
+#### `base/cert-manager/`
+- `cluster-issuer.yaml`  
+  Konfiguration für automatische TLS‑Zertifikate.
+
+#### `base/external-dns/`
+- `external-dns.yaml`  
+  DNS‑Synchronisation mit Google Cloud DNS.
+
+#### `base/external-secrets/`
+- `app.yaml`  
+- `helm-release.yaml`  
+- `secretstore.yaml`  
+- `test-secret.yaml`  
+  Bindet Secrets aus Google Secret Manager ein.
+
+#### `base/ingress/`
+- `app-ingress.yaml`  
+  Globale HTTPS‑Ingress‑Konfiguration.
+
+#### `base/platform/`
+- `root-app.yaml`  
+- `platform-apps.yaml`  
+- `base-app.yaml`  
+- `test-namespace.yaml`  
+  ArgoCD App‑of‑Apps Root und Plattform‑Services.
+
+---
+
+### `tenants/`
+Struktur für spätere Tenant‑Konfigurationen:
+
+- `staging.yaml`
+- `production.yaml`
+- `release-staging.yaml`
+- `release-production.yaml`
+- `kustomization.yaml`
+- `README.md`
+- `PROMPTS.md`
+
+Diese Dateien definieren Umgebungen, Namespaces und Release‑Konfigurationen.  
+Sie dienen als Grundlage für die spätere Tenant‑Automatisierung.
+
+---
+
+## ArgoCD Integration
+
+ArgoCD lädt die Root‑Application aus: "base/platform/root-app.yaml"
+
+
+Von dort werden alle weiteren Komponenten automatisch synchronisiert:
+
+- Plattform‑Services  
+- Ingress  
+- DNS  
+- Zertifikate  
+- Secrets  
+- Tenant‑Struktur  
+
+Änderungen in diesem Repository werden automatisch in den Cluster übernommen.
+
+---
+
+## Secrets
+
+Dieses Repository enthält keine sensiblen Daten.  
+Secrets werden ausschließlich über den **External Secrets Operator** aus Google Secret Manager bezogen.
+
+---
+
+## Weitere Informationen
+
+Dokumentation zur Tenant‑Plattform befindet sich unter: "docs/crossplane-tenant-platform.md"
+
+
+Das Infrastruktur‑Repository (GKE, DNS, IAM, Bootstrap): "infra-iac-gke"
+
+
