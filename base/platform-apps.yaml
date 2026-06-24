@@ -1,0 +1,28 @@
+# Person-2 (Crossplane / tenant SaaS) app-of-apps index.
+# Additive: this single top-level file under base/ is picked up by the existing
+# platform-root Application (which syncs base/ non-recursively). It fans out to
+# the Person-2 platform components in base/platform/applications/.
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: platform-apps
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "-1"
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/pfhrmn/platform-gitops.git
+    targetRevision: main
+    path: base/platform/applications
+    directory:
+      recurse: true
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: argocd
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true

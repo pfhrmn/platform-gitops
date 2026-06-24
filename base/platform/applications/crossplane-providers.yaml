@@ -1,0 +1,31 @@
+# Step 1: install provider-kubernetes (+ DeploymentRuntimeConfig + cluster-admin CRB).
+# Waits for Crossplane core CRDs (retry); ServerSideApply for the Provider package.
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: crossplane-providers
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/pfhrmn/platform-gitops.git
+    targetRevision: main
+    path: base/platform/crossplane-providers
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: crossplane-system
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    retry:
+      limit: 20
+      backoff:
+        duration: 20s
+        factor: 2
+        maxDuration: 3m
+    syncOptions:
+      - CreateNamespace=true
+      - ServerSideApply=true

@@ -1,0 +1,48 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+  - release-production.yaml
+  - release-staging.yaml
+  - production.yaml
+  - staging.yaml
+replacements:
+  - source:
+      kind: ConfigMap
+      name: tenant-release-production
+      fieldPath: data.backendImage
+    targets:
+      - select:
+          kind: XTenantApplication
+          labelSelector: platform.it-n.at/release-channel=production
+        fieldPaths:
+          - spec.backendImage
+  - source:
+      kind: ConfigMap
+      name: tenant-release-production
+      fieldPath: data.frontendImage
+    targets:
+      - select:
+          kind: XTenantApplication
+          labelSelector: platform.it-n.at/release-channel=production
+        fieldPaths:
+          - spec.frontendImage
+  - source:
+      kind: ConfigMap
+      name: tenant-release-staging
+      fieldPath: data.backendImage
+    targets:
+      - select:
+          kind: XTenantApplication
+          labelSelector: platform.it-n.at/release-channel=staging
+        fieldPaths:
+          - spec.backendImage
+  - source:
+      kind: ConfigMap
+      name: tenant-release-staging
+      fieldPath: data.frontendImage
+    targets:
+      - select:
+          kind: XTenantApplication
+          labelSelector: platform.it-n.at/release-channel=staging
+        fieldPaths:
+          - spec.frontendImage

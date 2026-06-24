@@ -1,0 +1,579 @@
+apiVersion: apiextensions.crossplane.io/v1
+kind: Composition
+metadata:
+  name: tenant-application-kubernetes
+  labels:
+    provider: kubernetes
+spec:
+  compositeTypeRef:
+    apiVersion: platform.it-n.at/v1alpha1
+    kind: XTenantApplication
+  resources:
+    - name: namespace
+      base:
+        apiVersion: kubernetes.crossplane.io/v1alpha2
+        kind: Object
+        spec:
+          providerConfigRef:
+            name: in-cluster
+          forProvider:
+            manifest:
+              apiVersion: v1
+              kind: Namespace
+              metadata:
+                name: tenant-placeholder
+                labels:
+                  platform.it-n.at/tenant: tenant-placeholder
+      patches:
+        - fromFieldPath: spec.tenantName
+          toFieldPath: spec.forProvider.manifest.metadata.name
+        - fromFieldPath: spec.tenantName
+          toFieldPath: spec.forProvider.manifest.metadata.labels[platform.it-n.at/tenant]
+      readinessChecks:
+        - type: None
+
+    - name: quota
+      base:
+        apiVersion: kubernetes.crossplane.io/v1alpha2
+        kind: Object
+        spec:
+          providerConfigRef:
+            name: in-cluster
+          forProvider:
+            manifest:
+              apiVersion: v1
+              kind: ResourceQuota
+              metadata:
+                name: tenant-quota
+                namespace: tenant-placeholder
+              spec:
+                hard:
+                  requests.cpu: "1"
+                  requests.memory: 2Gi
+                  limits.cpu: "2"
+                  limits.memory: 4Gi
+                  pods: "10"
+      patches:
+        - fromFieldPath: spec.tenantName
+          toFieldPath: spec.forProvider.manifest.metadata.namespace
+      readinessChecks:
+        - type: None
+
+    - name: limit-range
+      base:
+        apiVersion: kubernetes.crossplane.io/v1alpha2
+        kind: Object
+        spec:
+          providerConfigRef:
+            name: in-cluster
+          forProvider:
+            manifest:
+              apiVersion: v1
+              kind: LimitRange
+              metadata:
+                name: tenant-defaults
+                namespace: tenant-placeholder
+              spec:
+                limits:
+                  - type: Container
+                    default:
+                      cpu: 500m
+                      memory: 512Mi
+                    defaultRequest:
+                      cpu: 100m
+                      memory: 128Mi
+      patches:
+        - fromFieldPath: spec.tenantName
+          toFieldPath: spec.forProvider.manifest.metadata.namespace
+      readinessChecks:
+        - type: None
+
+    - name: default-deny-network-policy
+      base:
+        apiVersion: kubernetes.crossplane.io/v1alpha2
+        kind: Object
+        spec:
+          providerConfigRef:
+            name: in-cluster
+          forProvider:
+            manifest:
+              apiVersion: networking.k8s.io/v1
+              kind: NetworkPolicy
+              metadata:
+                name: default-deny-ingress
+                namespace: tenant-placeholder
+              spec:
+                podSelector: {}
+                policyTypes:
+                  - Ingress
+      patches:
+        - fromFieldPath: spec.tenantName
+          toFieldPath: spec.forProvider.manifest.metadata.namespace
+      readinessChecks:
+        - type: None
+
+    - name: allow-ingress-nginx-to-frontend
+      base:
+        apiVersion: kubernetes.crossplane.io/v1alpha2
+        kind: Object
+        spec:
+          providerConfigRef:
+            name: in-cluster
+          forProvider:
+            manifest:
+              apiVersion: networking.k8s.io/v1
+              kind: NetworkPolicy
+              metadata:
+                name: allow-ingress-nginx-to-frontend
+                namespace: tenant-placeholder
+              spec:
+                podSelector:
+                  matchLabels:
+                    app.kubernetes.io/name: frontend
+                policyTypes:
+                  - Ingress
+                ingress:
+                  - from:
+                      - namespaceSelector:
+                          matchLabels:
+                            kubernetes.io/metadata.name: ingress-nginx
+                    ports:
+                      - protocol: TCP
+                        port: 80
+      patches:
+        - fromFieldPath: spec.tenantName
+          toFieldPath: spec.forProvider.manifest.metadata.namespace
+      readinessChecks:
+        - type: None
+
+    - name: allow-ingress-nginx-to-backend
+      base:
+        apiVersion: kubernetes.crossplane.io/v1alpha2
+        kind: Object
+        spec:
+          providerConfigRef:
+            name: in-cluster
+          forProvider:
+            manifest:
+              apiVersion: networking.k8s.io/v1
+              kind: NetworkPolicy
+              metadata:
+                name: allow-ingress-nginx-to-backend
+                namespace: tenant-placeholder
+              spec:
+                podSelector:
+                  matchLabels:
+                    app.kubernetes.io/name: backend
+                policyTypes:
+                  - Ingress
+                ingress:
+                  - from:
+                      - namespaceSelector:
+                          matchLabels:
+                            kubernetes.io/metadata.name: ingress-nginx
+                    ports:
+                      - protocol: TCP
+                        port: 3000
+      patches:
+        - fromFieldPath: spec.tenantName
+          toFieldPath: spec.forProvider.manifest.metadata.namespace
+      readinessChecks:
+        - type: None
+
+    - name: allow-backend-to-postgres
+      base:
+        apiVersion: kubernetes.crossplane.io/v1alpha2
+        kind: Object
+        spec:
+          providerConfigRef:
+            name: in-cluster
+          forProvider:
+            manifest:
+              apiVersion: networking.k8s.io/v1
+              kind: NetworkPolicy
+              metadata:
+                name: allow-backend-to-postgres
+                namespace: tenant-placeholder
+              spec:
+                podSelector:
+                  matchLabels:
+                    cnpg.io/cluster: tenant-placeholder-postgres
+                policyTypes:
+                  - Ingress
+                ingress:
+                  - from:
+                      - podSelector:
+                          matchLabels:
+                            app.kubernetes.io/name: backend
+                    ports:
+                      - protocol: TCP
+                        port: 5432
+      patches:
+        - fromFieldPath: spec.tenantName
+          toFieldPath: spec.forProvider.manifest.metadata.namespace
+        - fromFieldPath: spec.tenantName
+          toFieldPath: spec.forProvider.manifest.spec.podSelector.matchLabels[cnpg.io/cluster]
+          transforms:
+            - type: string
+              string:
+                fmt: "%s-postgres"
+      readinessChecks:
+        - type: None
+
+    - name: allow-cnpg-system-to-postgres
+      base:
+        apiVersion: kubernetes.crossplane.io/v1alpha2
+        kind: Object
+        spec:
+          providerConfigRef:
+            name: in-cluster
+          forProvider:
+            manifest:
+              apiVersion: networking.k8s.io/v1
+              kind: NetworkPolicy
+              metadata:
+                name: allow-cnpg-system-to-postgres
+                namespace: tenant-placeholder
+              spec:
+                podSelector:
+                  matchLabels:
+                    cnpg.io/cluster: tenant-placeholder-postgres
+                policyTypes:
+                  - Ingress
+                ingress:
+                  - from:
+                      - namespaceSelector:
+                          matchLabels:
+                            kubernetes.io/metadata.name: cnpg-system
+                    ports:
+                      - protocol: TCP
+                        port: 5432
+                      - protocol: TCP
+                        port: 8000
+      patches:
+        - fromFieldPath: spec.tenantName
+          toFieldPath: spec.forProvider.manifest.metadata.namespace
+        - fromFieldPath: spec.tenantName
+          toFieldPath: spec.forProvider.manifest.spec.podSelector.matchLabels[cnpg.io/cluster]
+          transforms:
+            - type: string
+              string:
+                fmt: "%s-postgres"
+      readinessChecks:
+        - type: None
+
+    - name: allow-postgres-self-traffic
+      base:
+        apiVersion: kubernetes.crossplane.io/v1alpha2
+        kind: Object
+        spec:
+          providerConfigRef:
+            name: in-cluster
+          forProvider:
+            manifest:
+              apiVersion: networking.k8s.io/v1
+              kind: NetworkPolicy
+              metadata:
+                name: allow-postgres-self-traffic
+                namespace: tenant-placeholder
+              spec:
+                podSelector:
+                  matchLabels:
+                    cnpg.io/cluster: tenant-placeholder-postgres
+                policyTypes:
+                  - Ingress
+                ingress:
+                  - from:
+                      - podSelector:
+                          matchLabels:
+                            cnpg.io/cluster: tenant-placeholder-postgres
+                    ports:
+                      - protocol: TCP
+                        port: 5432
+                      - protocol: TCP
+                        port: 8000
+      patches:
+        - fromFieldPath: spec.tenantName
+          toFieldPath: spec.forProvider.manifest.metadata.namespace
+        - fromFieldPath: spec.tenantName
+          toFieldPath: spec.forProvider.manifest.spec.podSelector.matchLabels[cnpg.io/cluster]
+          transforms:
+            - type: string
+              string:
+                fmt: "%s-postgres"
+        - fromFieldPath: spec.tenantName
+          toFieldPath: spec.forProvider.manifest.spec.ingress[0].from[0].podSelector.matchLabels[cnpg.io/cluster]
+          transforms:
+            - type: string
+              string:
+                fmt: "%s-postgres"
+      readinessChecks:
+        - type: None
+
+    - name: database
+      base:
+        apiVersion: kubernetes.crossplane.io/v1alpha2
+        kind: Object
+        spec:
+          providerConfigRef:
+            name: in-cluster
+          forProvider:
+            manifest:
+              apiVersion: postgresql.cnpg.io/v1
+              kind: Cluster
+              metadata:
+                name: tenant-placeholder-postgres
+                namespace: tenant-placeholder
+              spec:
+                instances: 1
+                storage:
+                  size: 1Gi
+                bootstrap:
+                  initdb:
+                    database: app
+                    owner: app
+      patches:
+        - fromFieldPath: spec.tenantName
+          toFieldPath: spec.forProvider.manifest.metadata.name
+          transforms:
+            - type: string
+              string:
+                fmt: "%s-postgres"
+        - fromFieldPath: spec.tenantName
+          toFieldPath: spec.forProvider.manifest.metadata.namespace
+        - fromFieldPath: spec.databaseSize
+          toFieldPath: spec.forProvider.manifest.spec.storage.size
+
+    - name: backend-deployment
+      base:
+        apiVersion: kubernetes.crossplane.io/v1alpha2
+        kind: Object
+        spec:
+          providerConfigRef:
+            name: in-cluster
+          forProvider:
+            manifest:
+              apiVersion: apps/v1
+              kind: Deployment
+              metadata:
+                name: backend
+                namespace: tenant-placeholder
+                labels:
+                  app.kubernetes.io/name: backend
+              spec:
+                replicas: 1
+                selector:
+                  matchLabels:
+                    app.kubernetes.io/name: backend
+                template:
+                  metadata:
+                    labels:
+                      app.kubernetes.io/name: backend
+                  spec:
+                    containers:
+                      - name: backend
+                        image: backend-placeholder
+                        ports:
+                          - containerPort: 3000
+                        env:
+                          - name: DB_HOST
+                            value: tenant-placeholder-postgres-rw
+                          - name: DB_PORT
+                            value: "5432"
+                          - name: DB_NAME
+                            value: app
+                          - name: DB_USER
+                            valueFrom:
+                              secretKeyRef:
+                                name: tenant-placeholder-postgres-app
+                                key: username
+                          - name: DB_PASSWORD
+                            valueFrom:
+                              secretKeyRef:
+                                name: tenant-placeholder-postgres-app
+                                key: password
+                        resources:
+                          requests:
+                            cpu: 100m
+                            memory: 128Mi
+                          limits:
+                            cpu: 500m
+                            memory: 512Mi
+      patches:
+        - fromFieldPath: spec.tenantName
+          toFieldPath: spec.forProvider.manifest.metadata.namespace
+        - fromFieldPath: spec.replicas
+          toFieldPath: spec.forProvider.manifest.spec.replicas
+        - fromFieldPath: spec.backendImage
+          toFieldPath: spec.forProvider.manifest.spec.template.spec.containers[0].image
+        - fromFieldPath: spec.tenantName
+          toFieldPath: spec.forProvider.manifest.spec.template.spec.containers[0].env[0].value
+          transforms:
+            - type: string
+              string:
+                fmt: "%s-postgres-rw"
+        - fromFieldPath: spec.tenantName
+          toFieldPath: spec.forProvider.manifest.spec.template.spec.containers[0].env[3].valueFrom.secretKeyRef.name
+          transforms:
+            - type: string
+              string:
+                fmt: "%s-postgres-app"
+        - fromFieldPath: spec.tenantName
+          toFieldPath: spec.forProvider.manifest.spec.template.spec.containers[0].env[4].valueFrom.secretKeyRef.name
+          transforms:
+            - type: string
+              string:
+                fmt: "%s-postgres-app"
+
+    - name: backend-service
+      base:
+        apiVersion: kubernetes.crossplane.io/v1alpha2
+        kind: Object
+        spec:
+          providerConfigRef:
+            name: in-cluster
+          forProvider:
+            manifest:
+              apiVersion: v1
+              kind: Service
+              metadata:
+                name: backend
+                namespace: tenant-placeholder
+              spec:
+                selector:
+                  app.kubernetes.io/name: backend
+                ports:
+                  - name: http
+                    port: 80
+                    targetPort: 3000
+      patches:
+        - fromFieldPath: spec.tenantName
+          toFieldPath: spec.forProvider.manifest.metadata.namespace
+
+    - name: frontend-deployment
+      base:
+        apiVersion: kubernetes.crossplane.io/v1alpha2
+        kind: Object
+        spec:
+          providerConfigRef:
+            name: in-cluster
+          forProvider:
+            manifest:
+              apiVersion: apps/v1
+              kind: Deployment
+              metadata:
+                name: frontend
+                namespace: tenant-placeholder
+                labels:
+                  app.kubernetes.io/name: frontend
+              spec:
+                replicas: 1
+                selector:
+                  matchLabels:
+                    app.kubernetes.io/name: frontend
+                template:
+                  metadata:
+                    labels:
+                      app.kubernetes.io/name: frontend
+                  spec:
+                    containers:
+                      - name: frontend
+                        image: frontend-placeholder
+                        ports:
+                          - containerPort: 80
+                        resources:
+                          requests:
+                            cpu: 50m
+                            memory: 64Mi
+                          limits:
+                            cpu: 250m
+                            memory: 256Mi
+      patches:
+        - fromFieldPath: spec.tenantName
+          toFieldPath: spec.forProvider.manifest.metadata.namespace
+        - fromFieldPath: spec.replicas
+          toFieldPath: spec.forProvider.manifest.spec.replicas
+        - fromFieldPath: spec.frontendImage
+          toFieldPath: spec.forProvider.manifest.spec.template.spec.containers[0].image
+
+    - name: frontend-service
+      base:
+        apiVersion: kubernetes.crossplane.io/v1alpha2
+        kind: Object
+        spec:
+          providerConfigRef:
+            name: in-cluster
+          forProvider:
+            manifest:
+              apiVersion: v1
+              kind: Service
+              metadata:
+                name: frontend
+                namespace: tenant-placeholder
+              spec:
+                selector:
+                  app.kubernetes.io/name: frontend
+                ports:
+                  - name: http
+                    port: 80
+                    targetPort: 80
+      patches:
+        - fromFieldPath: spec.tenantName
+          toFieldPath: spec.forProvider.manifest.metadata.namespace
+
+    - name: ingress
+      base:
+        apiVersion: kubernetes.crossplane.io/v1alpha2
+        kind: Object
+        spec:
+          providerConfigRef:
+            name: in-cluster
+          forProvider:
+            manifest:
+              apiVersion: networking.k8s.io/v1
+              kind: Ingress
+              metadata:
+                name: app
+                namespace: tenant-placeholder
+                annotations:
+                  cert-manager.io/cluster-issuer: letsencrypt-dns01
+                  external-dns.alpha.kubernetes.io/hostname: tenant-placeholder.gcloud.it-n.at
+              spec:
+                ingressClassName: nginx
+                tls:
+                  - hosts:
+                      - tenant-placeholder.gcloud.it-n.at
+                    secretName: tenant-placeholder-tls
+                rules:
+                  - host: tenant-placeholder.gcloud.it-n.at
+                    http:
+                      paths:
+                        - path: /api
+                          pathType: Prefix
+                          backend:
+                            service:
+                              name: backend
+                              port:
+                                number: 80
+                        - path: /
+                          pathType: Prefix
+                          backend:
+                            service:
+                              name: frontend
+                              port:
+                                number: 80
+      patches:
+        - fromFieldPath: spec.tenantName
+          toFieldPath: spec.forProvider.manifest.metadata.namespace
+        - fromFieldPath: spec.domain
+          toFieldPath: spec.forProvider.manifest.metadata.annotations[external-dns.alpha.kubernetes.io/hostname]
+        - fromFieldPath: spec.domain
+          toFieldPath: spec.forProvider.manifest.spec.tls[0].hosts[0]
+        - fromFieldPath: spec.tenantName
+          toFieldPath: spec.forProvider.manifest.spec.tls[0].secretName
+          transforms:
+            - type: string
+              string:
+                fmt: "%s-tls"
+        - fromFieldPath: spec.domain
+          toFieldPath: spec.forProvider.manifest.spec.rules[0].host
