@@ -1,0 +1,13 @@
+apiVersion: platform.it-n.at/v1alpha1
+kind: XTenantApplication
+metadata:
+  name: staging
+  labels:
+    platform.it-n.at/release-channel: staging
+spec:
+  tenantName: staging
+  domain: staging.gcloud.it-n.at
+  backendImage: replace-me
+  frontendImage: replace-me
+  replicas: 1
+  databaseSize: 1Gi

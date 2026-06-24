@@ -1,0 +1,7 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: tenant-release-production
+data:
+  backendImage: europe-west3-docker.pkg.dev/project-a7033755-91ce-4662-bb8/group-h-apps/backend:latest
+  frontendImage: europe-west3-docker.pkg.dev/project-a7033755-91ce-4662-bb8/group-h-apps/frontend:latest

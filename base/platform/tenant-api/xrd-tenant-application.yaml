@@ -1,0 +1,49 @@
+apiVersion: apiextensions.crossplane.io/v1
+kind: CompositeResourceDefinition
+metadata:
+  name: xtenantapplications.platform.it-n.at
+spec:
+  group: platform.it-n.at
+  names:
+    kind: XTenantApplication
+    plural: xtenantapplications
+  defaultCompositionRef:
+    name: tenant-application-kubernetes
+  versions:
+    - name: v1alpha1
+      served: true
+      referenceable: true
+      schema:
+        openAPIV3Schema:
+          type: object
+          properties:
+            spec:
+              type: object
+              required:
+                - tenantName
+                - domain
+                - backendImage
+                - frontendImage
+              properties:
+                tenantName:
+                  type: string
+                  pattern: "^[a-z0-9]([-a-z0-9]*[a-z0-9])?$"
+                domain:
+                  type: string
+                backendImage:
+                  type: string
+                frontendImage:
+                  type: string
+                replicas:
+                  type: integer
+                  default: 1
+                  minimum: 1
+                  maximum: 3
+                databaseSize:
+                  type: string
+                  default: 1Gi
+            status:
+              type: object
+              properties:
+                endpoint:
+                  type: string

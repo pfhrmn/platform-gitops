@@ -1,0 +1,32 @@
+# Steps 6-7: tenant instances (production + staging) and the image-release
+# rollout. The tenants/ kustomization injects the release ConfigMap images into
+# each XTenantApplication via replacements (staging-first promotion model).
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: tenants
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "3"
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/pfhrmn/platform-gitops.git
+    targetRevision: main
+    path: tenants
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: argocd
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    retry:
+      limit: 20
+      backoff:
+        duration: 30s
+        factor: 2
+        maxDuration: 5m
+    syncOptions:
+      - ServerSideApply=true
+      - SkipDryRunOnMissingResource=true

@@ -1,0 +1,32 @@
+# Step 1: ProviderConfig "in-cluster" (InjectedIdentity) for provider-kubernetes.
+# Waits for the provider CRDs (retry + SkipDryRunOnMissingResource).
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: crossplane-config
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "2"
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/pfhrmn/platform-gitops.git
+    targetRevision: main
+    path: base/platform/crossplane-config
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: crossplane-system
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    retry:
+      limit: 30
+      backoff:
+        duration: 30s
+        factor: 2
+        maxDuration: 5m
+    syncOptions:
+      - CreateNamespace=true
+      - ServerSideApply=true
+      - SkipDryRunOnMissingResource=true
