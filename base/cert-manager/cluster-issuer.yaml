@@ -1,14 +1,20 @@
+# ClusterIssuer used by the tenant Ingresses (annotation cert-manager.io/cluster-issuer: letsencrypt-dns01).
+# Uses the ACME DNS-01 challenge against Cloud DNS, so wildcard/any host under the
+# delegated zone can be validated without exposing an HTTP solver.
+# cert-manager authenticates to Cloud DNS via Workload Identity: the cert-manager
+# ServiceAccount (cert-manager/cert-manager) must be annotated with a GCP SA holding
+# roles/dns.admin (here: externaldns-sa@infra-iac-gke-gcp.iam.gserviceaccount.com).
 apiVersion: cert-manager.io/v1
 kind: ClusterIssuer
 metadata:
-  name: letsencrypt-prod
+  name: letsencrypt-dns01
 spec:
   acme:
-    email: deine-email@domain.at
+    email: office@edv-nussbaumer.at
     server: https://acme-v02.api.letsencrypt.org/directory
     privateKeySecretRef:
-      name: letsencrypt-prod
+      name: letsencrypt-dns01-account-key
     solvers:
-    - http01:
-        ingress:
-          class: nginx
+      - dns01:
+          cloudDNS:
+            project: infra-iac-gke-gcp
