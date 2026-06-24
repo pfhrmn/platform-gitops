@@ -1,0 +1,50 @@
+name: lint-manifests
+
+# Validates the GitOps manifests on every PR so syntactically broken Kubernetes /
+# kustomize is caught before merge (assignment: pipeline / software-management hygiene).
+on:
+  pull_request:
+    paths:
+      - "base/**"
+      - "tenants/**"
+      - ".github/workflows/lint-manifests.yml"
+  push:
+    branches: [main]
+    paths:
+      - "base/**"
+      - "tenants/**"
+
+jobs:
+  kustomize-build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: kustomize build (client-side render)
+        run: |
+          set -euo pipefail
+          for d in \
+            base/platform/tenant-api \
+            base/platform/crossplane-providers \
+            base/platform/crossplane-config \
+            tenants ; do
+              echo "::group::kustomize build $d"
+              kubectl kustomize "$d" > /dev/null
+              echo "OK $d"
+              echo "::endgroup::"
+          done
+
+  yaml-lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: yamllint (relaxed)
+        uses: ibiqlik/action-yamllint@v3
+        with:
+          file_or_dir: base/platform tenants base/platform-apps.yaml
+          config_data: |
+            extends: relaxed
+            rules:
+              line-length: disable
+              document-start: disable
+              comments:
+                min-spaces-from-content: 1

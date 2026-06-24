@@ -1,0 +1,32 @@
+# Step 2: the tenant SaaS API — XTenantApplication XRD + Composition.
+# ServerSideApply is required (the Composition is large; avoids the
+# client-side last-applied annotation size limit).
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: crossplane-tenant-api
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "2"
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/pfhrmn/platform-gitops.git
+    targetRevision: main
+    path: base/platform/tenant-api
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: crossplane-system
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    retry:
+      limit: 20
+      backoff:
+        duration: 30s
+        factor: 2
+        maxDuration: 5m
+    syncOptions:
+      - CreateNamespace=true
+      - ServerSideApply=true

@@ -1,0 +1,13 @@
+apiVersion: platform.it-n.at/v1alpha1
+kind: XTenantApplication
+metadata:
+  name: production
+  labels:
+    platform.it-n.at/release-channel: production
+spec:
+  tenantName: production
+  domain: production.gcloud.it-n.at
+  backendImage: replace-me
+  frontendImage: replace-me
+  replicas: 1
+  databaseSize: 1Gi
