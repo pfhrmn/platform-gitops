@@ -101,4 +101,38 @@ Dokumentation zur Tenant‑Plattform befindet sich unter: "docs/crossplane-tenan
 
 Das Infrastruktur‑Repository (GKE, DNS, IAM, Bootstrap): "infra-iac-gke"
 
+---
+
+## Screenshots / Nachweis
+
+Die laufende Plattform – öffentlich erreichbar, gültiges TLS:
+
+![Produktions-Tenant](docs/screenshots/production.jpg)
+
+*Produktions-Tenant – https://production.gcloud.it-n.at*
+
+![Staging-Tenant](docs/screenshots/staging.jpg)
+
+*Staging-Tenant – https://staging.gcloud.it-n.at*
+
+![ArgoCD](docs/screenshots/argocd.jpg)
+
+*ArgoCD – synchronisierte Plattform- und Tenant-Applications*
+
+![Zertifikate](docs/screenshots/certificates.jpg)
+
+*Gültige TLS-Zertifikate je Tenant (kubectl get certificate -A)*
+
+![Ingresses](docs/screenshots/ingress.jpg)
+
+*Tenant-Ingresses (kubectl get ingress -A)*
+
+![Pods](docs/screenshots/pods.jpg)
+
+*Laufende Pods – Plattform + Tenants (kubectl get pods -A)*
+
+![Services](docs/screenshots/svc.jpg)
+
+*Services je Tenant (kubectl get svc -A)*
+
 
