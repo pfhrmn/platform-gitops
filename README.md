@@ -18,6 +18,10 @@ Das Repository stellt alle zentralen Plattform‑Komponenten bereit, die für de
 
 Die Struktur ist so aufgebaut, dass Erweiterungen und spätere Automatisierungen problemlos ergänzt werden können.
 
+![Architektur – GitOps + Crossplane SaaS-Plattform](docs/architektur.png)
+
+*Architektur: Entwickler → GitOps-Repo → ArgoCD → Crossplane; pro Tenant Frontend, Backend und PostgreSQL, dazu die Plattform-Services und die externen Anbindungen (Let's Encrypt, Cloud DNS, Artifact Registry).*
+
 ---
 
 ## Repository‑Struktur
