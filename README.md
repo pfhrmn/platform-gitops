@@ -75,7 +75,7 @@ Sie dienen als Grundlage für die spätere Tenant‑Automatisierung.
 
 ## ArgoCD Integration
 
-ArgoCD lädt die Root‑Application aus: "base/platform/root-app.yaml"
+ArgoCD lädt die Root‑Application aus: "base/root-app.yaml"
 
 
 Von dort werden alle weiteren Komponenten automatisch synchronisiert:
@@ -104,6 +104,16 @@ Dokumentation zur Tenant‑Plattform befindet sich unter: "docs/crossplane-tenan
 
 
 Das Infrastruktur‑Repository (GKE, DNS, IAM, Bootstrap): "infra-iac-gke"
+
+---
+
+## Monitoring (Bonus)
+
+Ressourcenverbrauch und Healthiness pro Tenant werden über **Google Managed Prometheus** + **Cloud Monitoring** erfasst und im Dashboard „Group H – Tenant App Monitoring" visualisiert (CPU, Speicher, Container-Restarts, laufende Pods je Namespace). Details und Dashboard-as-Code: [`docs/monitoring.md`](docs/monitoring.md).
+
+![Monitoring](docs/screenshots/monitoring.png)
+
+*Cloud-Monitoring-Dashboard – Verbrauch & Healthiness je Tenant*
 
 ---
 
